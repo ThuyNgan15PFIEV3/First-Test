@@ -58,7 +58,8 @@ export default class UserController {
                 include: [
                     {
                         model: Block,
-                        as: 'block'
+                        as: 'block',
+                        required: false
                     }
                 ]
             });
@@ -208,13 +209,6 @@ export default class UserController {
         try {
             const {id} = req.params;
             const {oldPassword, newPassword} = req.body;
-            // Lay pass cu tu clien
-            // Check pass cu dung khong?
-            // Lay hash o trong db cua user can check
-            // truyen pasword cu can check voi hash de check
-            // dung thi cho update
-            // sai tra ve loi.
-            // Validate
             const user = await User.findById(id);
             if (!user) {
                 return res.status(400).json({
