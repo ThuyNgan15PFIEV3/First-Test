@@ -15,4 +15,6 @@ module.exports = (app) => {
 		.get(userController.getUserByName);
     app.route('/users/:id/changePassword')
 		.put(userController.updatePass);
+    app.route('/login')
+		.post(userController.login);
 };

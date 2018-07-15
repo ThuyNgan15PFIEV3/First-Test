@@ -58,13 +58,16 @@ module.exports = (sequelize, DataTypes) => {
 
     Block.associate = (models) => {
         Block.belongsTo(models.User, {
-            foreignKey: 'authorId'
+            foreignKey: 'authorId',
+            as: 'author'
         });
         Block.belongsTo(models.User, {
-            foreignKey: 'userId'
+            foreignKey: 'userId',
+            as: 'user'
         });
         Block.belongsTo(models.Group, {
-            foreignKey: 'groupId'
+            foreignKey: 'groupId',
+            as: 'group'
         });
     };
 

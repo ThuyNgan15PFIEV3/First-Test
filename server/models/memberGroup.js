@@ -49,10 +49,12 @@ module.exports = (sequelize, DataTypes) => {
 
     MemberGroup.associate = (models) => {
         MemberGroup.belongsTo(models.User, {
-            foreignKey: 'authorId'
+            foreignKey: 'authorId',
+            as: 'author'
         });
         MemberGroup.belongsTo(models.Group, {
-            foreignKey: 'groupId'
+            foreignKey: 'groupId',
+            as: 'group'
         });
     };
 

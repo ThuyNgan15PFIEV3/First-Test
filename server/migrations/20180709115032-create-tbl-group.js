@@ -19,6 +19,9 @@ module.exports = {
                 },
                 onDelete: 'CASCADE'
             },
+            type: {
+                type: DataTypes.STRING
+            },
             avatar: {
                 type: DataTypes.STRING
             },

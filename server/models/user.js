@@ -62,7 +62,12 @@ module.exports = (sequelize, DataTypes) => {
 
     User.associate = (models) => {
         User.hasMany(models.Group, {
-            foreignKey: 'authorId'
+            foreignKey: 'authorId',
+            as: 'group'
+        });
+        User.hasMany(models.Block, {
+            foreignKey: 'authorId',
+            as: 'block'
         });
     };
 

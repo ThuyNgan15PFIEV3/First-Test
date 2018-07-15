@@ -1,14 +1,65 @@
 'use strict';
-import {User} from '../models';
+import {User, Block} from '../models';
 import {Op} from '../models';
-
+import {encryptHelper} from '../helpers/index';
 let bcrypt = require('bcrypt');
 export default class UserController {
+    login = async (req, res, next) => {
+        try {
+            const {username, password} = req.body;
+            if (username === undefined) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Username is required field'
+                });
+            }
+            if (password === undefined) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Password is required field'
+                });
+            }
+            const user = await User.find({
+                where: {
+                    username
+                }
+            });
+            if (!user) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Username is not exist'
+                });
+            }
+            const isValidPass = await encryptHelper.isValidPassword(password, user.password);
+            if (!isValidPass) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'The password is invalid'
+                });
+            }
+            return res.status(200).json({
+                success: true,
+                data: user
+            });
+        } catch (e) {
+            console.log(e);
+            return res.status(400).json({
+                success: false,
+                error: e.message
+            })
+        }
+    };
     getListUsers = async (req, res, next) => {
         try {
             const users = await User.findAll({
                 order: [
                     ['createdAt', 'DESC']
+                ],
+                include: [
+                    {
+                        model: Block,
+                        as: 'block'
+                    }
                 ]
             });
             return res.status(200).json({
@@ -33,14 +84,7 @@ export default class UserController {
                     error: 'Address is invalid'
                 });
             }
-            let hashPass = await new Promise((resolve, reject) => {
-                bcrypt.hash(password, bcrypt.genSaltSync(8), function (error, hash) {
-                    if (error) {
-                        return reject(error);
-                    }
-                    return resolve(hash);
-                });
-            });
+            let hashPass = await encryptHelper.hashPass(password);
             const newUser = await User.create({
                 username,
                 password: hashPass,
@@ -159,21 +203,6 @@ export default class UserController {
             });
         }
     };
-    isValidPassword = function (password, hash) {
-        return new Promise((resolve, reject) => {
-            bcrypt.compare(password, hash, function (err, res) {
-                if (err) {
-                    console.log(err);
-                } else {
-                    if (res === true) {
-                        resolve(true);
-                    } else {
-                        reject(false);
-                    }
-                }
-            });
-        })
-    };
 
     updatePass = async (req, res, next) => {
         try {
@@ -193,7 +222,7 @@ export default class UserController {
                     error: 'Not found user'
                 });
             }
-            const isValidPass = await this.isValidPassword(password, user.password);
+            const isValidPass = await encryptHelper.isValidPassword(oldPassword, user.password);
             if (!isValidPass) {
                 return res.status(400).json({
                     success: false,
@@ -201,7 +230,7 @@ export default class UserController {
                 });
             }
             const newHashPassword = await new Promise((resolve, reject) => {
-                bcrypt.hash(password, bcrypt.genSaltSync(8), function (error, hash) {
+                bcrypt.hash(newPassword, bcrypt.genSaltSync(8), function (error, hash) {
                     if (error) {
                         return reject(error);
                     }

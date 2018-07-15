@@ -21,6 +21,9 @@ module.exports = (sequelize, DataTypes) => {
                 },
                 onDelete: 'CASCADE'
             },
+            type: {
+                type: DataTypes.STRING
+            },
             avatar: {
                 type: DataTypes.STRING
             },
@@ -46,7 +49,12 @@ module.exports = (sequelize, DataTypes) => {
 
     Group.associate = (models) => {
         Group.belongsTo(models.User, {
-            foreignKey: 'authorId'
+            foreignKey: 'authorId',
+            as: 'author'
+        });
+        Group.hasMany(models.Block, {
+            foreignKey: 'groupId',
+            as: 'group'
         });
     };
 

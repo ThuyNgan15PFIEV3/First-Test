@@ -55,10 +55,12 @@ module.exports = (sequelize, DataTypes) => {
 
     Message.associate = (models) => {
         Message.belongsTo(models.User, {
-            foreignKey: 'authorId'
+            foreignKey: 'authorId',
+            as: 'author'
         });
         Message.belongsTo(models.Group, {
-            foreignKey: 'groupId'
+            foreignKey: 'groupId',
+            as: 'group'
         });
     };
 
