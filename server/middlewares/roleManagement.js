@@ -1,9 +1,9 @@
 'use strict';
-import {JWTHelper} from '../helpers'
 export default class RoleManagement {
-    static isAdmin = async (req, res, next) => {
+    static verifyRole = async (req, res, next) => {
         try {
-            let role = null;
+            const user = req.user;
+            const role = user.role1;
             if (role === 'normal') {
                 return res.status(400).json({
                     success: true,
@@ -17,5 +17,5 @@ export default class RoleManagement {
                 error: e.message
             });
         }
-
+    }
 }

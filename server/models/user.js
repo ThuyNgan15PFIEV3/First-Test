@@ -33,6 +33,9 @@ module.exports = (sequelize, DataTypes) => {
             address: {
                 type: DataTypes.ARRAY(DataTypes.STRING)
             },
+            role1: {
+                type: DataTypes.ENUM(('normal', 'admin'))
+            },
             createdAt: {
                 type: DataTypes.DATE,
                 defaultValue: DataTypes.NOW,

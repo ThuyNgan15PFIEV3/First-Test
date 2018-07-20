@@ -40,7 +40,8 @@ export default class UserController {
             }
             const token = await JWTHelper.sign('node_mentor_secret_key', {
                 id: user.id,
-                username: user.username
+                username: user.username,
+                role: user.role1
             });
             console.log(token);
             return res.status(200).json({
@@ -166,15 +167,24 @@ export default class UserController {
     deleteUser = async (req, res, next) => {
         try {
             const {id} = req.params;
-            await User.destroy({
-                where: {
-                    id
-                }
-            });
-            return res.status(200).json({
-                success: true,
-                data: true
-            })
+            const role = req.user.role1;
+            if (role !== "admin") {
+                return res.status(400).json({
+                    success: false,
+                    error: "Delete wrong! You are not admin"
+                });
+            }
+            else {
+                await User.destroy({
+                    where: {
+                        id
+                    }
+                });
+                return res.status(200).json({
+                    success: true,
+                    data: true
+                });
+            }
         } catch (e) {
             return res.status(400).json({
                 success: false,
@@ -187,28 +197,37 @@ export default class UserController {
         try {
             const {id} = req.params;
             const {username, address} = req.body;
-            const updatedUser = await User.update(
-                {
-                    username,
-                    address
-                },
-                {
-                    where: {
-                        id
-                    },
-                    returning: true
-                }
-            );
-            if (updatedUser[0] === 0) {
+            const author = req.user.id;
+            if (author !== null) {
                 return res.status(400).json({
                     success: false,
-                    error: 'Cannot update user'
+                    error: "You are not author"
                 });
             }
-            return res.status(200).json({
-                success: true,
-                data: updatedUser[1]
-            });
+            else {
+                const updatedUser = await User.update(
+                    {
+                        username,
+                        address
+                    },
+                    {
+                        where: {
+                            id
+                        },
+                        returning: true
+                    }
+                );
+                if (updatedUser[0] === 0) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'Cannot update user'
+                    });
+                }
+                return res.status(200).json({
+                    success: true,
+                    data: updatedUser[1]
+                });
+            }
         } catch (e) {
             return res.status(400).json({
                 success: false,
@@ -217,6 +236,49 @@ export default class UserController {
         }
     };
 
+    updateActiveUser = async (req, res, next) => {
+        try {
+            const {id} = req.params;
+            const {username, address} = req.body;
+            const role = req.user.role1;
+            if (role !== "admin") {
+                return res.status(400).json({
+                    success: false,
+                    error: "Update wrong! You are not admin"
+                });
+            }
+            else {
+                const updatedUser = await User.update(
+                    {
+                        username,
+                        address
+                    },
+                    {
+                        where: {
+                            id,
+                            isActive: "true"
+                        },
+                        returning: true
+                    }
+                );
+                if (updatedUser[0] === 0) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'Cannot update user'
+                    });
+                }
+                return res.status(200).json({
+                    success: true,
+                    data: updatedUser[1]
+                });
+            }
+        } catch (e) {
+            return res.status(400).json({
+                success: false,
+                error: e.message
+            });
+        }
+    };
     updatePass = async (req, res, next) => {
         try {
             const {id} = req.params;
@@ -275,7 +337,7 @@ export default class UserController {
 
     blockUserInGroup = async (req, res, next) => {
         try {
-            const {userId, groupId} = req.params;
+            const {id, groupId} = req.params;
             const  user = req.user;
             const group = await Group.find({
                 where: {
@@ -285,8 +347,8 @@ export default class UserController {
             });
             if (group !== null ) {
                 const newBlock = await Block.create({
-                    authorId: userId,
-                    userId,
+                    authorId: id,
+                    userId: id,
                     groupId
                 });
                 const block = await Block.find({
