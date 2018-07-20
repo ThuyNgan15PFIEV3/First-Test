@@ -1,5 +1,5 @@
 'use strict';
-import {Message, Group, User} from '../models';
+import {Message, Group, User, Block} from '../models';
 
 export default class MessageController {
     getListMessage = async (req, res, next) => {
@@ -37,13 +37,8 @@ export default class MessageController {
     };
     createMessage = async (req, res, next) => {
         try {
-            const {authorId, groupId, body, type} = req.body;
-            if (authorId === undefined) {
-                return res.status(400).json({
-                    success: false,
-                    error: "authorId is required field"
-                });
-            }
+            const {groupId, body, type} = req.body;
+            const user = req.user;
             if (groupId === undefined) {
                 return res.status(400).json({
                     success: false,
@@ -62,15 +57,30 @@ export default class MessageController {
                     error: "type is required field"
                 });
             }
+            const block = await Block.find({
+                where: {
+                    authorId: user.id,
+                    groupId
+                }
+            });
+            if (block !== null) {
+                return res.status(400).json({
+                    success: false,
+                    error: "Group had been blocked"
+                });
+            }
             const newMessage = await Message.create({
-                authorId,
+                authorId: user.id,
                 groupId,
                 body,
                 type
             });
-            const group = await Group.find({
+            const message = await Message.find({
                 where: {
                     id: newMessage.id
+                },
+                attributes: {
+                    exclude: ['authorId', 'groupId']
                 },
                 include: [
                     {
@@ -85,7 +95,7 @@ export default class MessageController {
             });
             return res.status(200).json({
                 success: true,
-                data: group
+                data: message
             });
         } catch (e) {
             console.log(e);

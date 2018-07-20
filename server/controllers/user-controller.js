@@ -1,7 +1,7 @@
 'use strict';
-import {User, Block} from '../models';
+import {User, Block, Group, MemberGroup} from '../models';
 import {Op} from '../models';
-import {encryptHelper} from '../helpers/index';
+import {encryptHelper,  JWTHelper} from '../helpers/index';
 let bcrypt = require('bcrypt');
 export default class UserController {
     login = async (req, res, next) => {
@@ -22,24 +22,30 @@ export default class UserController {
             const user = await User.find({
                 where: {
                     username
-                }
+                },
+                attribute: ['username', 'password', 'id']
             });
             if (!user) {
                 return res.status(400).json({
                     success: false,
-                    error: 'Username is not exist'
+                    error: 'User is not exist'
                 });
             }
             const isValidPass = await encryptHelper.isValidPassword(password, user.password);
             if (!isValidPass) {
                 return res.status(400).json({
                     success: false,
-                    error: 'The password is invalid'
+                    error: 'Wrong password'
                 });
             }
+            const token = await JWTHelper.sign('node_mentor_secret_key', {
+                id: user.id,
+                username: user.username
+            });
+            console.log(token);
             return res.status(200).json({
                 success: true,
-                data: user
+                data: token
             });
         } catch (e) {
             console.log(e);
@@ -49,6 +55,7 @@ export default class UserController {
             })
         }
     };
+
     getListUsers = async (req, res, next) => {
         try {
             const users = await User.findAll({
@@ -76,6 +83,7 @@ export default class UserController {
         }
 
     };
+
     createUser = async (req, res, next) => {
         try {
             const {username, password, address} = req.body;
@@ -102,6 +110,7 @@ export default class UserController {
             })
         }
     };
+
     getOneUser = async (req, res, next) => {
         try {
             const {id} = req.params;
@@ -117,12 +126,14 @@ export default class UserController {
                 data: user
             });
         } catch (e) {
+            console.log(e);
             return res.status(400).json({
                 success: false,
                 error: e.message
             });
         }
     };
+
     getUserByName = async (req, res, next) => {
         try {
             const {username} = req.params;
@@ -171,6 +182,7 @@ export default class UserController {
             });
         }
     };
+
     updateUser = async (req, res, next) => {
         try {
             const {id} = req.params;
@@ -258,6 +270,59 @@ export default class UserController {
                 success: false,
                 error: e.message
             });
+        }
+    };
+
+    blockUserInGroup = async (req, res, next) => {
+        try {
+            const {userId, groupId} = req.params;
+            const  user = req.user;
+            const group = await Group.find({
+                where: {
+                    id: groupId,
+                    authorId: user.id
+                }
+            });
+            if (group !== null ) {
+                const newBlock = await Block.create({
+                    authorId: userId,
+                    userId,
+                    groupId
+                });
+                const block = await Block.find({
+                    where: {
+                        id: newBlock.id
+                    },
+                    include: [
+                        {
+                            model: User,
+                            as: 'author'
+                        },
+                        {
+                            model: User,
+                            as: 'user'
+                        },
+                        {
+                            model: Group,
+                            as: 'group'
+                        }
+                    ]
+                });
+                return res.status(200).json({
+                    success: true,
+                    data: block
+                });
+            }
+            return res.status(400).json({
+                success: false,
+                error: 'You are not administrator'
+            });
+        } catch (e) {
+            console.log(e);
+            return res.status(400).json({
+                success: false,
+                error: e.message
+            })
         }
     };
 }

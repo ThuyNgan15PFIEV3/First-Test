@@ -1,5 +1,5 @@
 'use strict';
-import {Group, User} from '../models';
+import {Group, User, MemberGroup} from '../models';
 
 export default class GroupController {
     getListGroup = async (req, res, next) => {
@@ -7,7 +7,7 @@ export default class GroupController {
             const groups = await Group.findAll(
             {
                 attributes: {
-                    exclude: ['authorId']
+                    exclude: 'authorId'
                 },
                 order: [
                     ['createdAt', 'DESC']
@@ -17,6 +17,10 @@ export default class GroupController {
                         model: User,
                         as: 'author'
                     },
+                    {
+                        model: MemberGroup,
+                        as: 'members'
+                    }
                 ]
             });
             return res.status(200).json({
@@ -76,21 +80,26 @@ export default class GroupController {
             });
         }
     };
+
     getOneGroup = async (req, res, next) => {
         try {
             const {id} = req.params;
-            const group = await User.find({
+            const group = await Group.find({
                 where: {
                     id
                 },
                 attributes: {
-                    exclude: ['authorId']
+                    exclude: 'authorId'
                 },
                 include: [
                     {
                         model: User,
                         as: 'author'
                     },
+                    {
+                        model: MemberGroup,
+                        as: 'members'
+                    }
                 ]
             });
             if (!group) {
@@ -104,20 +113,30 @@ export default class GroupController {
                 data: group
             });
         } catch (e) {
+            console.log(e);
             return res.status(400).json({
                 success: false,
                 error: e.message
             });
         }
     };
+
     deleteGroup = async (req, res, next) => {
         try {
             const {id} = req.params;
-            await Group.destroy({
+            const  user = req.user;
+            const count = await Group.destroy({
                 where: {
-                    id
+                    id,
+                    authorId: user.id
                 }
             });
+            if (count === 0 ) {
+               return res.status(400).json({
+                   success: false,
+                   error: 'You are not administrator'
+               });
+            }
             return res.status(200).json({
                 success: true,
                 data: true
@@ -129,6 +148,7 @@ export default class GroupController {
             });
         }
     };
+
     updateGroup = async (req, res, next) => {
         try {
             const {id} = req.params;
@@ -139,7 +159,7 @@ export default class GroupController {
                     error: 'User is not exist'
                 });
             }
-            const updateGroup = await User.update(
+            const updateGroup = await Group.update(
                 {
                     name,
                     avatar,
@@ -153,10 +173,11 @@ export default class GroupController {
                     returning: true
                 }
             );
+            console.log(updateGroup);
             if (updateGroup[0] === 0) {
                 return res.status(400).json({
                     success: false,
-                    error: 'Cannot update user'
+                    error: 'Cannot update group'
                 });
             }
             return res.status(200).json({
@@ -170,4 +191,6 @@ export default class GroupController {
             });
         }
     };
+
+
 }

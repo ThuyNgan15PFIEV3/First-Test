@@ -13,13 +13,7 @@ module.exports = (sequelize, DataTypes) => {
                 type: DataTypes.STRING
             },
             authorId: {
-                type: DataTypes.UUID,
-                allowNull: false,
-                references: {
-                    model: 'User',
-                    key: 'id'
-                },
-                onDelete: 'CASCADE'
+                type: DataTypes.UUID
             },
             type: {
                 type: DataTypes.STRING
@@ -52,9 +46,9 @@ module.exports = (sequelize, DataTypes) => {
             foreignKey: 'authorId',
             as: 'author'
         });
-        Group.hasMany(models.Block, {
+        Group.hasMany(models.MemberGroup, {
             foreignKey: 'groupId',
-            as: 'group'
+            as: 'members'
         });
     };
 
