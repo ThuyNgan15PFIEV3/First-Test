@@ -1,23 +1,17 @@
 'use strict';
 import {User, Block, Group, MemberGroup} from '../models';
 import {Op} from '../models';
-import {encryptHelper,  JWTHelper} from '../helpers/index';
+import {encryptHelper,  JWTHelper, responseHelper} from '../helpers/index';
 let bcrypt = require('bcrypt');
 export default class UserController {
     login = async (req, res, next) => {
         try {
             const {username, password} = req.body;
             if (username === undefined) {
-                return res.status(400).json({
-                    success: false,
-                    error: 'Username is required field'
-                });
+                return responseHelper.returnError(res, new Error('Username is required field'));
             }
             if (password === undefined) {
-                return res.status(400).json({
-                    success: false,
-                    error: 'Password is required field'
-                });
+                return responseHelper.returnError(res, new Error('Password is required field'));
             }
             const user = await User.find({
                 where: {
@@ -26,34 +20,24 @@ export default class UserController {
                 attribute: ['username', 'password', 'id']
             });
             if (!user) {
-                return res.status(400).json({
-                    success: false,
-                    error: 'User is not exist'
-                });
+                return responseHelper.returnError(res, new Error('User is not exist'));
             }
             const isValidPass = await encryptHelper.isValidPassword(password, user.password);
             if (!isValidPass) {
-                return res.status(400).json({
-                    success: false,
-                    error: 'Wrong password'
-                });
+                return responseHelper.returnError(res, new Error('Wrong password'));
             }
-            const token = await JWTHelper.sign('node_mentor_secret_key', {
+            const token = await JWTHelper.sign({
                 id: user.id,
                 username: user.username,
                 role: user.role1
             });
             console.log(token);
-            return res.status(200).json({
-                success: true,
-                data: token
+            return responseHelper.returnSuccess(res, {
+                token
             });
         } catch (e) {
             console.log(e);
-            return res.status(400).json({
-                success: false,
-                error: e.message
-            })
+            return responseHelper.returnError(res, e);
         }
     };
 
@@ -71,28 +55,19 @@ export default class UserController {
                     }
                 ]
             });
-            return res.status(200).json({
-                success: true,
-                data: users
+            return responseHelper.returnSuccess(res, {
+                users
             });
         } catch (e) {
-            console.log(e);
-            return res.status(400).json({
-                success: false,
-                error: e.message
-            })
+            return responseHelper.returnError(res, e);
         }
-
     };
 
     createUser = async (req, res, next) => {
         try {
             const {username, password, address} = req.body;
             if (!Array.isArray(address) || address.length === 0) {
-                return res.status(400).json({
-                    success: false,
-                    error: 'Address is invalid'
-                });
+                return responseHelper.returnError(res, new Error('Address is invalid'));
             }
             let hashPass = await encryptHelper.hashPass(password);
             const newUser = await User.create({
@@ -100,15 +75,11 @@ export default class UserController {
                 password: hashPass,
                 address
             });
-            return res.status(200).json({
-                success: true,
-                data: newUser
+            return responseHelper.returnSuccess(res, {
+                newUser
             });
         } catch (e) {
-            return res.status(400).json({
-                success: false,
-                error: e.message
-            })
+            return responseHelper.returnError(res, e);
         }
     };
 
@@ -117,21 +88,11 @@ export default class UserController {
             const {id} = req.params;
             const user = await User.findById(id);
             if (!user) {
-                return res.status(400).json({
-                    success: false,
-                    error: 'User is not exist'
-                });
+                return responseHelper.returnError(res, new Error('User is not exist'));
             }
-            return res.status(200).json({
-                success: true,
-                data: user
-            });
+            return responseHelper.returnSuccess(res, user);
         } catch (e) {
-            console.log(e);
-            return res.status(400).json({
-                success: false,
-                error: e.message
-            });
+            return responseHelper.returnError(res, e);
         }
     };
 
@@ -279,6 +240,7 @@ export default class UserController {
             });
         }
     };
+
     updatePass = async (req, res, next) => {
         try {
             const {id} = req.params;
@@ -370,21 +332,14 @@ export default class UserController {
                         }
                     ]
                 });
-                return res.status(200).json({
-                    success: true,
-                    data: block
+                return responseHelper.returnSuccess(res, {
+                    block
                 });
             }
-            return res.status(400).json({
-                success: false,
-                error: 'You are not administrator'
-            });
+            return responseHelper.returnError(res, new Error('You are not administrator'));
         } catch (e) {
-            console.log(e);
-            return res.status(400).json({
-                success: false,
-                error: e.message
-            })
+            return responseHelper.returnError(res, e);
         }
     };
+
 }

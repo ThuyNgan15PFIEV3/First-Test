@@ -1,7 +1,7 @@
 'use strict';
-import {User, Group, MemberGroup} from '../models';
-import {Op} from '../models';
-import {encryptHelper,  JWTHelper} from '../helpers/index';
+import {User, Group, MemberGroup, Op} from '../models';
+import {encryptHelper,  JWTHelper, responseHelper} from '../helpers/index';
+import {groupRepository, memberGroupRepository} from '../repositories';
 export default class MemberGroupController {
 
     getListMember = async (req, res, next) => {
@@ -125,6 +125,85 @@ export default class MemberGroupController {
                 success: false,
                 error: e.message
             });
+        }
+    };
+    leaveGroup = async (req, res, next) => {
+        try {
+            const groupId = req.params.id;
+            const  userLoginId = req.user.id;
+            const group = await groupRepository.getOne({
+                where: {
+                    id: groupId,
+                    type: 'group'
+                },
+                attribute: []
+            });
+            if (!group) {
+                return responseHelper.returnError(res, new Error('You are trying to leave private group'));
+            }
+            const isAuthorGroup = await groupRepository.getOne({
+                where: {
+                    id: groupId,
+                    authorId: userLoginId
+                },
+                attributes: []
+            });
+
+            if (isAuthorGroup) {
+                await groupRepository.delete({
+                    where: {
+                        id: groupId
+                    }
+                });
+                return responseHelper.returnSuccess(res, true);
+            }
+            const count = await memberGroupRepository.delete({
+                where: {
+                    groupId,
+                    userId: userLoginId
+                }
+            });
+            if (count === 0 ) {
+                return responseHelper.returnError(res, new Error('You are not user of this account or you are not member in group'));
+            }
+            return responseHelper.returnSuccess(res, data);
+        } catch (e) {
+            return responseHelper.returnError(res, e);
+        }
+    };
+    inviteToGroup = async (req, res, next) => {
+        try {
+            const groupId = req.params.id;
+            const  userLoginId = req.user.id;
+            const {invitedUserId} = req.body;
+            const isExistMember =  memberGroupRepository.getOne({
+                where: {
+                    groupId,
+                    userId: invitedUserId
+                },
+                paranoid: false
+            });
+            if (!isExistMember) {
+                await  MemberGroup.create({
+                    groupId: id,
+                    userId: invitedUserId
+                });
+            }  else if (isExistMember.deletedAt) {
+                await memberGroupRepository.update(
+                    {
+                        deletedAt: null
+                    },
+                    {
+                        where: {
+                            id: isExistMember.id
+                        },
+                        paranoid: false
+                    }
+                );
+            }
+            return responseHelper.returnError(res, new Error('This user has been exist in group'));
+        } catch (e) {
+            return responseHelper.returnError(res, e);
         }
     };
 }

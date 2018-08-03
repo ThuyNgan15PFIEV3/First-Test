@@ -34,7 +34,7 @@ module.exports = (sequelize, DataTypes) => {
                 type: DataTypes.ARRAY(DataTypes.STRING)
             },
             role1: {
-                type: DataTypes.ENUM(('normal', 'admin'))
+                type: DataTypes.ENUM(['normal', 'admin'])
             },
             createdAt: {
                 type: DataTypes.DATE,

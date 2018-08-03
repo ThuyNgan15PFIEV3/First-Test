@@ -1,10 +1,44 @@
 'use strict';
-import {Group, User, MemberGroup} from '../models';
-
+import {Group, User, Op, MemberGroup} from '../models';
+import {responseHelper} from '../helpers';
+import {groupRepository, memberGroupRepository} from '../repositories';
 export default class GroupController {
+    getListActiveGroups = async (req, res, next) => {
+        try {
+            const userLoginId = req.user.id;
+            const memberGroups = await memberGroupRepository.getAll({
+                where: {
+                    userId: userLoginId
+                },
+                order: [
+                    ['createdAt', 'DESC']
+                ],
+                attributes: ['groupId']
+            });
+            const groupIds = memberGroups.map(item => item.groupId);
+            const groups = await groupRepository
+                .getAll(
+                    {
+                        where: {
+                            id: groupIds
+                        },
+                        attributes: {
+                            exclude: ['authorId']
+                        },
+                        order: [
+                            ['createdAt', 'DESC']
+                        ]
+                    }
+                );
+            return responseHelper.returnSuccess(res, groups);
+        } catch (e) {
+            return responseHelper.returnError(res, e);
+        }
+    };
+
     getListGroup = async (req, res, next) => {
         try {
-            const groups = await Group.findAll(
+            const groups = await groupRepository.getAll(
             {
                 attributes: {
                     exclude: 'authorId'
@@ -23,61 +57,86 @@ export default class GroupController {
                     }
                 ]
             });
-            return res.status(200).json({
-                success: true,
-                data: groups
-            });
+            return responseHelper.returnSuccess(res, groups);
         } catch (e) {
-            console.log(e);
-            return res.status(400).json({
-                success: false,
-                error: e.message
-            });
+            return responseHelper.returnError(res, e);
         }
     };
 
     createGroup = async (req, res, next) => {
+        let newGroup = null;
         try {
-            const {name, avatar, authorId, type} = req.body;
-            if (authorId === undefined) {
-                return res.status(400).json({
-                    success: false,
-                    error: "authorId is required field"
-                });
+            const userLoginId = req.user.id;
+            let {name, avatar, type, partnerId, memberIds} = req.body;
+            if (!type) {
+                return responseHelper.returnError(res, new Error('type is required field'));
             }
-            if (type === undefined) {
-                return res.status(400).json({
-                    success: false,
-                    error: "type is required field"
-                });
+            switch (type) {
+                case 'private':
+                    if (partnerId === undefined) {
+                        return responseHelper.returnError(res, new Error('Partner is required for private group'));
+                    }
+                    const existGroup = await groupRepository.getOne({
+                        where: {
+                            [Op.or]: [
+                                {
+                                    authorId: userLoginId,
+                                    partnerId
+                                },
+                                {
+                                    authorId: partnerId,
+                                    partnerId: userLoginId
+                                }
+                            ]
+                        }
+                    });
+
+                    if (existGroup) {
+                        return responseHelper.returnSuccess(res, existGroup);
+                    }
+                    memberIds = [userLoginId, partnerId];
+                    break;
+                case 'group':
+                    if (memberIds === undefined || !Array.isArray(memberIds) || memberIds.length < 0) {
+                        return responseHelper.returnError(res, new Error('Member is invalid'));
+                    }
+                    if (!memberIds.includes(userLoginId)) {
+                        memberIds[memberIds.length] = userLoginId;
+                    }
+                    break;
+                default:
+                    return responseHelper.returnError(res, new Error('Type is invalid'));
             }
-            const newGroup = await Group.create({
+            newGroup = await groupRepository.create({
                 name,
                 avatar,
-                authorId,
-                type
+                type,
+                authorId: userLoginId,
+                partnerId
             });
-            const group = await Group.find({
+            const memberGroup = memberIds.map(item => {
+                return {
+                    groupId: newGroup.id,
+                    userId: item
+                }
+            });
+            await memberGroupRepository.bulkCreate(memberGroup);
+            const group = await groupRepository.getOne({
                 where: {
                     id: newGroup.id
-                },
-                include: [
-                    {
-                        model: User,
-                        as: 'author'
-                    }
-                ]
+                }
             });
-            return res.status(200).json({
-                success: true,
-                data: group
-            });
+            return responseHelper.returnSuccess(res, group);
         } catch (e) {
-            console.log(e);
-            return res.status(400).json({
-                success: false,
-                error: e.message
-            });
+            if (newGroup) {
+                groupRepository.delete({
+                    force: true,
+                    where: {
+                        id: newGroup.id
+                    }
+                });
+            }
+            return responseHelper.returnError(res, e);
         }
     };
 
@@ -191,6 +250,4 @@ export default class GroupController {
             });
         }
     };
-
-
 }

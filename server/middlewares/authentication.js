@@ -13,7 +13,7 @@ export default class Authentication {
                 authorization = req.body.token;
             }
             if (token !== null) {
-                req.user = await JWTHelper.verify(token, 'node_mentor_secret_key');
+                req.user = await JWTHelper.verify(token);
                 return next();
             }
             if (authorization !== null) {
@@ -21,7 +21,7 @@ export default class Authentication {
                 if (tokens.length === 2) {
                     token = tokens[1]
                 }
-                req.user = await JWTHelper.verify(token, 'node_mentor_secret_key');
+                req.user = await JWTHelper.verify(token);
                 return next();
             }
             return res.status(400).json({
